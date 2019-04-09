@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/ogier/pflag"
+	"github.com/spf13/pflag"
 	"golang.org/x/net/websocket"
 )
 
@@ -35,6 +35,30 @@ func main() {
 	basicUI := pflag.BoolP("basic-ui", "u", false, "Hide connection options from the main screen")
 	verbose := pflag.BoolP("verbose", "v", false, "Show extra log info")
 	help := pflag.Bool("help", false, "Show this help text")
+
+	for f, e := range map[string]string{
+		"arbitrary-hosts": "NOVNC_ARBITRARY_HOSTS",
+		"arbitrary-ports": "NOVNC_ARBITRARY_PORTS",
+		"host":            "NOVNC_HOST",
+		"port":            "NOVNC_PORT",
+		"addr":            "NOVNC_ADDR",
+		"basic-ui":        "NOVNC_BASIC_UI",
+		"verbose":         "NOVNC_VERBOSE",
+	} {
+		pflag.CommandLine.VisitAll(func(flag *pflag.Flag) {
+			if flag.Name != f {
+				return
+			}
+			flag.Usage += " (env " + e + ")"
+			if v, ok := os.LookupEnv(e); ok {
+				fmt.Printf("Loading value of --%s from %s: %#v\n", f, e, v)
+				if err := flag.Value.Set(v); err != nil {
+					fmt.Printf("Error setting flag: %v\n", err)
+				}
+			}
+		})
+	}
+
 	pflag.Parse()
 
 	if *help {
