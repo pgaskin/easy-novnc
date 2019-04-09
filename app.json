@@ -1,0 +1,36 @@
+{
+    "name": "easy-novnc",
+    "description": "An easy way to run a  noVNC instance and proxy with a single binary.",
+    "repository": "https://github.com/geek1011/easy-novnc",
+    "keywords": [
+        "novnc",
+        "vnc",
+        "websockify"
+    ],
+    "env": {
+        "NOVNC_ARBITRARY_HOSTS": {
+            "description": "Allow connection to other hosts",
+            "value": "true"
+        },
+        "NOVNC_ARBITRARY_PORTS": {
+            "description": "Allow connections to arbitrary ports",
+            "value": "true"
+        },
+        "NOVNC_BASIC_UI": {
+            "description": "Hide connection options from the main screen",
+            "value": "false"
+        },
+        "NOVNC_HOST": {
+            "description": "The host/ip to connect to by default",
+            "value": "localhost"
+        },
+        "NOVNC_PORT": {
+            "description": "The port to connect to by default",
+            "value": "5900"
+        },
+        "NOVNC_NO_URL_PASSWORD": {
+            "description": "Do not allow password in URL params",
+            "value": "true"
+        }
+    }
+}

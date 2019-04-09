@@ -1,6 +1,8 @@
 # easy-novnc
 An easy way to run a [noVNC](https://github.com/novnc/noVNC) instance and proxy with a single binary.
 
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
+
 ## Features
 - Clean start page
 - Optionally allow connections to arbitrary hosts (and ports)
