@@ -118,7 +118,7 @@
                     </div>
                     <div class="inline field">
                         <div class="ui checkbox">
-                            <input type="checkbox" name="view_only" id="view_only" value="true">
+                            <input type="checkbox" name="view_only" id="view_only" value="true" {{if .defaultViewOnly}}checked{{end}}>
                             <label for="view_only">View only</label>
                         </div>
                     </div>
@@ -127,7 +127,7 @@
                 <input type="hidden" name="reconnect" id="reconnect" value="true">
                 <input type="hidden" name="show_dot" id="show_dot" value="true">
                 <input type="hidden" name="bell" id="bell" value="false">
-                <input type="hidden" name="view_only" id="view_only" value="false">
+                <input type="hidden" name="view_only" id="view_only" value="{{if .defaultViewOnly}}true{{else}}false{{end}}">
                 {{end}}
             </form>
         </div>

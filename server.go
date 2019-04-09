@@ -33,19 +33,21 @@ func main() {
 	port := pflag.Uint16P("port", "p", 5900, "The port to connect to by default")
 	addr := pflag.StringP("addr", "a", ":8080", "The address to listen on")
 	basicUI := pflag.BoolP("basic-ui", "u", false, "Hide connection options from the main screen")
-	noURLPassword := pflag.Bool("no-url-password", false, "Do not allow password in URL params")
 	verbose := pflag.BoolP("verbose", "v", false, "Show extra log info")
+	noURLPassword := pflag.Bool("no-url-password", false, "Do not allow password in URL params")
+	defaultViewOnly := pflag.Bool("default-view-only", false, "Use view-only by default")
 	help := pflag.Bool("help", false, "Show this help text")
 
 	envmap := map[string]string{
-		"arbitrary-hosts": "NOVNC_ARBITRARY_HOSTS",
-		"arbitrary-ports": "NOVNC_ARBITRARY_PORTS",
-		"host":            "NOVNC_HOST",
-		"port":            "NOVNC_PORT",
-		"addr":            "NOVNC_ADDR",
-		"basic-ui":        "NOVNC_BASIC_UI",
-		"no-url-password": "NOVNC_NO_URL_PASSWORD",
-		"verbose":         "NOVNC_VERBOSE",
+		"arbitrary-hosts":   "NOVNC_ARBITRARY_HOSTS",
+		"arbitrary-ports":   "NOVNC_ARBITRARY_PORTS",
+		"host":              "NOVNC_HOST",
+		"port":              "NOVNC_PORT",
+		"addr":              "NOVNC_ADDR",
+		"basic-ui":          "NOVNC_BASIC_UI",
+		"no-url-password":   "NOVNC_NO_URL_PASSWORD",
+		"default-view-only": "NOVNC_DEFAULT_VIEW_ONLY",
+		"verbose":           "NOVNC_VERBOSE",
 	}
 
 	if val, ok := os.LookupEnv("PORT"); ok {
@@ -90,13 +92,14 @@ func main() {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		indexTMPL.Execute(w, map[string]interface{}{
-			"arbitraryHosts": *arbitraryHosts,
-			"arbitraryPorts": *arbitraryPorts,
-			"host":           *host,
-			"port":           *port,
-			"addr":           *addr,
-			"basicUI":        *basicUI,
-			"noURLPassword":  *noURLPassword,
+			"arbitraryHosts":  *arbitraryHosts,
+			"arbitraryPorts":  *arbitraryPorts,
+			"host":            *host,
+			"port":            *port,
+			"addr":            *addr,
+			"basicUI":         *basicUI,
+			"noURLPassword":   *noURLPassword,
+			"defaultViewOnly": *defaultViewOnly,
 		})
 	})
 

@@ -31,6 +31,10 @@
         "NOVNC_NO_URL_PASSWORD": {
             "description": "Do not allow password in URL params",
             "value": "true"
+        },
+        "NOVNC_DEFAULT_VIEW_ONLY": {
+            "description": "Use view-only by default",
+            "value": "false"
         }
     }
 }
