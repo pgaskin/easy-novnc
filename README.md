@@ -1,13 +1,18 @@
 # easy-novnc
 An easy way to run a [noVNC](https://github.com/novnc/noVNC) instance and proxy with a single binary.
 
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
-
 ## Features
-- Clean start page
-- Optionally allow connections to arbitrary hosts (and ports)
-- Single binary, no dependencies
-- Easy setup
+- Clean start page.
+- Optionally allow connections to arbitrary hosts (and ports).
+- Single binary, no dependencies.
+- Can be configured using environment variables or command line flags (but works out-of-the box).
+- Easy setup.
+
+## Installation
+- Binaries for the latest commit can be downloaded [here](https://ci.appveyor.com/project/geek1011/easy-novnc/build/artifacts).
+- It can also be [deployed to Heroku](https://heroku.com/deploy).
+- A docker image is available: [geek1011/easy-novnc:latest](https://hub.docker.com/r/geek1011/easy-novnc).
+- You can build your own binaries with go 1.12 or newer using `go get github.com/geek1011/easy-novnc` or by cloning this repo and running `go build`.
 
 ## Usage
 ```
@@ -24,6 +29,3 @@ Options:
       --no-url-password   Do not allow password in URL params (env NOVNC_NO_URL_PASSWORD)
   -v, --verbose           Show extra log info (env NOVNC_VERBOSE)
 ```
-
-## Updating
-To update noVNC to the latest version from GitHub, run `go generate` or `go run novnc_generate.go`.
