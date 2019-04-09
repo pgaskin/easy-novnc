@@ -134,6 +134,7 @@ func vncHandler(defhost string, defport uint16, verbose, allowHosts, allowPorts 
 		}
 
 		logf(verbose, "connect %s:%s\n", host, port)
+		w.Header().Set("X-Target-Addr", host+":"+port)
 		websockify(host+":"+port).ServeHTTP(w, r)
 	})
 }
