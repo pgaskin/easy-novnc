@@ -121,6 +121,11 @@
                         </div>
                     </div>
                 </div>
+                {{else}}
+                <input type="hidden" name="reconnect" id="reconnect" value="true">
+                <input type="hidden" name="show_dot" id="show_dot" value="true">
+                <input type="hidden" name="bell" id="bell" value="false">
+                <input type="hidden" name="view_only" id="view_only" value="false">
                 {{end}}
             </form>
         </div>
