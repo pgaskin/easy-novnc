@@ -1,4 +1,4 @@
-module novnc
+module github.com/geek1011/easy-novnc
 
 go 1.12
 
