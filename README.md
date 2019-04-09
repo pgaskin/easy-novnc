@@ -19,6 +19,7 @@ Options:
       --help              Show this help text
   -h, --host string       The host/ip to connect to by default (env NOVNC_HOST) (default "localhost")
   -p, --port uint16       The port to connect to by default (env NOVNC_PORT) (default 5900)
+      --no-url-password   Do not allow password in URL params (env NOVNC_NO_URL_PASSWORD)
   -v, --verbose           Show extra log info (env NOVNC_VERBOSE)
 ```
 

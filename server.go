@@ -33,6 +33,7 @@ func main() {
 	port := pflag.Uint16P("port", "p", 5900, "The port to connect to by default")
 	addr := pflag.StringP("addr", "a", ":8080", "The address to listen on")
 	basicUI := pflag.BoolP("basic-ui", "u", false, "Hide connection options from the main screen")
+	noURLPassword := pflag.Bool("no-url-password", false, "Do not allow password in URL params")
 	verbose := pflag.BoolP("verbose", "v", false, "Show extra log info")
 	help := pflag.Bool("help", false, "Show this help text")
 
@@ -43,6 +44,7 @@ func main() {
 		"port":            "NOVNC_PORT",
 		"addr":            "NOVNC_ADDR",
 		"basic-ui":        "NOVNC_BASIC_UI",
+		"no-url-password": "NOVNC_NO_URL_PASSWORD",
 		"verbose":         "NOVNC_VERBOSE",
 	}
 
@@ -94,6 +96,7 @@ func main() {
 			"port":           *port,
 			"addr":           *addr,
 			"basicUI":        *basicUI,
+			"noURLPassword":  *noURLPassword,
 		})
 	})
 
