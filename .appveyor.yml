@@ -1,0 +1,39 @@
+image: ubuntu
+
+# stack: go 1.12
+
+version: '{build}'
+
+cache:
+- go1.12.1.deb
+
+install:
+- 'if [[ $APPVEYOR_REPO_TAG == "true" ]]; then appveyor UpdateBuild -Version "$(git describe --tags --always)"; else appveyor UpdateBuild -Version "$(git rev-parse --short HEAD)"; fi'
+- 'wget --no-clobber -O go1.12.1.deb https://deb.geek1011.net/pool/main/g/go/go_1.12.1-godeb1_amd64.deb || true'
+- sudo dpkg -i go1.12.1.deb
+- go mod download
+
+build_script:
+- go test -v ./...
+- GOOS=windows GOARCH=386 go build -o easy-novnc_windows.exe
+- GOOS=darwin GOARCH=amd64 go build -o easy-novnc_darwin-64bit
+- GOOS=linux GOARCH=386 go build -o easy-novnc_linux-32bit
+- GOOS=linux GOARCH=amd64 go build -o easy-novnc_linux-64bit
+- GOOS=linux GOARCH=arm go build -o easy-novnc_linux-arm
+
+test: off
+
+artifacts:
+- path: easy-novnc_*
+
+deploy:
+  release: $(APPVEYOR_BUILD_VERSION)
+  provider: GitHub
+  auth_token:
+    secure: oMHoA3qAfCcz3PsfBJmce+fKcSOtUF1cTC3RUj1qKT4J4BjbkOcawazIrXR4F1eb
+  artifact: /.+/
+  draft: true
+  prerelease: false
+  on:
+    branch: master
+    APPVEYOR_REPO_TAG: true
