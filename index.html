@@ -5,9 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <meta name="robots" content="noindex" />
+    <meta name="robots" content="noindex">
     <title>noVNC</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+    <!-- easy-novnc (https://github.com/geek1011/easy-novnc) -->
     <style>
         body {
             background: #f4f4f4;
@@ -140,7 +141,7 @@
         function updatePath() {
             var addr = "vnc";
             if (host && host.value.trim() != "") {
-                addr = addr + "/" + host.value.trim();
+                addr = addr + "/" + encodeURIComponent(host.value.trim());
                 if (port && port.value.toString().trim() != "") {
                     addr = addr + "/" + port.value.toString().trim();
                 }

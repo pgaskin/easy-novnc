@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -38,6 +39,8 @@ func TestVNCHandler(t *testing.T) {
 				m.Handle("/vnc", vnc)
 				m.Handle("/vnc/{host:[a-zA-Z0-9_.-]+}", vnc)
 				m.Handle("/vnc/{host:[a-zA-Z0-9_.-]+}/{port:[0-9]+}", vnc)
+				m.Handle("/vnc/{host:"+ipv6Regexp+"}", vnc)
+				m.Handle("/vnc/{host:"+ipv6Regexp+"}/{port:[0-9]+}", vnc)
 				m.ServeHTTP(w, r)
 			}()
 
@@ -65,12 +68,22 @@ func TestVNCHandler(t *testing.T) {
 	t.Run("CIDRWhitelistAllowIP", testCase("http://example.com/vnc/10.0.0.1", 101, "10.0.0.1:5900", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), true))
 	t.Run("CIDRWhitelistBlockIP", testCase("http://example.com/vnc/127.0.0.1", 401, "", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), true))
 	t.Run("CIDRBlacklistBlockIP", testCase("http://example.com/vnc/10.0.0.1", 401, "", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
-	t.Run("CIDRBlacklistAllowIP", testCase("http://example.com/vnc/127.0.0.1", 101, "127.0.0.1:5900", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
+	t.Run("CIDRBlacklistAllowIP", testCase("http://example.com/vnc/127.0.0.1/5900", 101, "127.0.0.1:5900", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
 
 	t.Run("CIDRWhitelistAllowHost", testCase("http://example.com/vnc/10.0.0.1.ip.dns.geek1011.net", 101, "10.0.0.1.ip.dns.geek1011.net:5900", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), true))
 	t.Run("CIDRWhitelistBlockHost", testCase("http://example.com/vnc/127.0.0.1.ip.dns.geek1011.net", 401, "", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), true))
 	t.Run("CIDRBlacklistBlockHost", testCase("http://example.com/vnc/10.0.0.1.ip.dns.geek1011.net", 401, "", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
-	t.Run("CIDRBlacklistAllowHost", testCase("http://example.com/vnc/127.0.0.1.ip.dns.geek1011.net", 101, "127.0.0.1.ip.dns.geek1011.net:5900", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
+	t.Run("CIDRBlacklistAllowHost", testCase("http://example.com/vnc/127.0.0.1.ip.dns.geek1011.net/5900", 101, "127.0.0.1.ip.dns.geek1011.net:5900", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
+
+	t.Run("CIDRWhitelistAllowIPv6", testCase("http://example.com/vnc/a%3Ab%3Ac%3Ad%3Aa%3Ab%3Ac%3Ad", 101, "[a:b:c:d:a:b:c:d]:5900", "localhost", 5900, true, true, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), true))
+	t.Run("CIDRWhitelistBlockIPv6", testCase("http://example.com/vnc/a%3Ab%3Ac%3Ad%3Aa%3Ab%3Ad%3Ad", 401, "", "localhost", 5900, true, true, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), true))
+	t.Run("CIDRBlacklistBlockIPv6", testCase("http://example.com/vnc/a%3Ab%3Ac%3Ad%3Aa%3Ab%3Ac%3Ad", 401, "", "localhost", 5900, true, true, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), false))
+	t.Run("CIDRBlacklistAllowIPv6", testCase("http://example.com/vnc/a%3Ab%3Ac%3Ad%3Aa%3Ab%3Ad%3Ad/5900", 101, "[a:b:c:d:a:b:d:d]:5900", "localhost", 5900, true, true, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), false))
+
+	t.Run("CIDRWhitelistAllowHostv6", testCase("http://example.com/vnc/a.b.c.d.a.b.c.d.ip.dns.geek1011.net", 101, "a.b.c.d.a.b.c.d.ip.dns.geek1011.net:5900", "localhost", 5900, true, true, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), true))
+	t.Run("CIDRWhitelistBlockHostv6", testCase("http://example.com/vnc/a.b.c.d.a.b.d.d.ip.dns.geek1011.net", 401, "", "localhost", 5900, true, true, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), true))
+	t.Run("CIDRBlacklistBlockHostv6", testCase("http://example.com/vnc/a.b.c.d.a.b.c.d.ip.dns.geek1011.net", 401, "", "localhost", 5900, true, true, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), false))
+	t.Run("CIDRBlacklistAllowHostv6", testCase("http://example.com/vnc/a.b.c.d.a.b.d.d.ip.dns.geek1011.net/5900", 101, "a.b.c.d.a.b.d.d.ip.dns.geek1011.net:5900", "localhost", 5900, true, true, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), false))
 }
 
 func TestWebsockify(t *testing.T) {
@@ -220,12 +233,17 @@ func TestCIDRBlackWhiteList(t *testing.T) {
 	t.Run("WhitelistBlock", testCase(mustParseCIDRList("10.0.0.0/24,127.0.0.0/16"), true, []string{"11.0.0.1", "1.0.1.1", "1.2.3.4.ip.dns.geek1011.net"}, true))
 	t.Run("BlacklistAllow", testCase(mustParseCIDRList("10.0.0.0/24,127.0.0.0/16"), false, []string{"11.0.0.1", "1.0.1.1", "1.2.3.4.ip.dns.geek1011.net"}, false))
 	t.Run("BlacklistBlock", testCase(mustParseCIDRList("10.0.0.0/24,127.0.0.0/16"), false, []string{"10.0.0.1", "127.0.1.1", "10.0.0.9.ip.dns.geek1011.net"}, true))
+	t.Run("WhitelistAllowv6", testCase(mustParseCIDRList("a:b:c:d:a:b:c:d/120"), true, []string{"a:b:c:d:a:b:c:d", "a:b:c:d:a:b:c:a", "a.b.c.d.a.b.c.d.ip.dns.geek1011.net"}, false))
+	t.Run("WhitelistBlockv6", testCase(mustParseCIDRList("a:b:c:d:a:b:c:d/120"), true, []string{"a:b:c:d:a:b:d:d", "a:b:c:d:a:b:d:a", "a.b.c.d.a.b.d.d.ip.dns.geek1011.net"}, true))
+	t.Run("BlacklistAllowv6", testCase(mustParseCIDRList("a:b:c:d:a:b:c:d/120"), false, []string{"a:b:c:d:a:b:d:d", "a:b:c:d:a:b:d:a", "a.b.c.d.a.b.d.d.ip.dns.geek1011.net"}, false))
+	t.Run("BlacklistBlockv6", testCase(mustParseCIDRList("a:b:c:d:a:b:c:d/120"), false, []string{"a:b:c:d:a:b:c:d", "a:b:c:d:a:b:c:a", "a.b.c.d.a.b.c.d.ip.dns.geek1011.net"}, true))
 }
 
 func TestParseCIDRList(t *testing.T) {
 	strs := []string{
 		"127.0.0.0/16",
 		"192.168.0.0/24",
+		"a:b:c:d:a:b:c:0/120",
 	}
 	cidrs, err := parseCIDRList(strs)
 	if err != nil {
@@ -241,10 +259,47 @@ func TestParseCIDRList(t *testing.T) {
 	strs = []string{
 		"127.0.0.0/16",
 		"192.168.0.0.123.4/24",
+		"a:b:c:d:a:b:c:d/120",
 	}
 	_, err = parseCIDRList(strs)
 	if err == nil {
 		t.Errorf("expected error: when parsing erroneous list")
+	}
+}
+
+func TestIPv6Regexp(t *testing.T) {
+	re := regexp.MustCompile(ipv6Regexp)
+	for _, ipv6 := range []string{
+		"1:2:3:4:5:6:7:8",
+		"1::",
+		"1:2:3:4:5:6:7::",
+		"1::8",
+		"1:2:3:4:5:6::8",
+		"1:2:3:4:5:6::8",
+		"1::7:8",
+		"1:2:3:4:5::7:8",
+		"1:2:3:4:5::8",
+		"1::5:6:7:8",
+		"1:2:3::5:6:7:8",
+		"1:2:3::8",
+		"1::4:5:6:7:8",
+		"1:2::4:5:6:7:8",
+		"1:2::8",
+		"::2:3:4:5:6:7:8",
+		"::2:3:4:5:6:7:8",
+		"::8",
+		"::",
+		"fe80::7:8%eth0",
+		"fe80::7:8%1",
+		"::255.255.255.255",
+		"::ffff:255.255.255.255",
+		"::ffff:0:255.255.255.255",
+		"2001:db8:3:4::192.0.2.33",
+		"64:ff9b::192.0.2.33",
+	} {
+		if !re.MatchString(ipv6) {
+			t.Errorf("expected regexp to match %#v", ipv6)
+		}
 	}
 }
 

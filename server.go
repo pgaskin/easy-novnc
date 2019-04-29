@@ -22,6 +22,9 @@ import (
 //go:generate go run novnc_generate.go
 //go:generate go run index_generate.go
 
+// https://stackoverflow.com/a/17871737
+var ipv6Regexp = `(?:(?:[0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}|(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}|(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}|(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(?:(?::[0-9a-fA-F]{1,4}){1,6})|:(?:(?::[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(?::[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(?:ffff(?::0{1,4}){0,1}:){0,1}(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])|(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9]))`
+
 func main() {
 	pflag.Usage = func() {
 		fmt.Printf("Usage: %s [options]\n\nOptions:\n", os.Args[0])
@@ -109,6 +112,8 @@ func main() {
 	r.Handle("/vnc", vnc)
 	r.Handle("/vnc/{host:[a-zA-Z0-9_.-]+}", vnc)
 	r.Handle("/vnc/{host:[a-zA-Z0-9_.-]+}/{port:[0-9]+}", vnc)
+	r.Handle("/vnc/{host:"+ipv6Regexp+"}", vnc)
+	r.Handle("/vnc/{host:"+ipv6Regexp+"}/{port:[0-9]+}", vnc)
 
 	r.NotFoundHandler = fs("noVNC-master", noVNC)
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -166,9 +171,14 @@ func vncHandler(defhost string, defport uint16, verbose, allowHosts, allowPorts 
 			}
 		}
 
-		logf(verbose, "connect %s:%s\n", host, port)
-		w.Header().Set("X-Target-Addr", host+":"+port)
-		websockify(host+":"+port).ServeHTTP(w, r)
+		addr := host + ":" + port
+		if ip := net.ParseIP(host); ip != nil && ip.To4() == nil {
+			addr = "[" + host + "]:" + port
+		}
+
+		logf(verbose, "connect %s\n", addr)
+		w.Header().Set("X-Target-Addr", addr)
+		websockify(addr).ServeHTTP(w, r)
 	})
 }
 
