@@ -28,7 +28,7 @@ func main() {
 	}
 
 	arbitraryHosts := pflag.BoolP("arbitrary-hosts", "H", false, "Allow connection to other hosts")
-	arbitraryPorts := pflag.BoolP("arbitrary-ports", "P", false, "Allow connections to arbitrary ports (requires arbitraryHosts)")
+	arbitraryPorts := pflag.BoolP("arbitrary-ports", "P", false, "Allow connections to arbitrary ports (requires arbitrary-hosts)")
 	host := pflag.StringP("host", "h", "localhost", "The host/ip to connect to by default")
 	port := pflag.Uint16P("port", "p", 5900, "The port to connect to by default")
 	addr := pflag.StringP("addr", "a", ":8080", "The address to listen on")
@@ -73,6 +73,11 @@ func main() {
 	})
 
 	pflag.Parse()
+
+	if *arbitraryPorts && !*arbitraryHosts {
+		fmt.Printf("Error: arbitrary-ports requires arbitrary-hosts to be enabled\n")
+		os.Exit(2)
+	}
 
 	if *help {
 		pflag.Usage()
