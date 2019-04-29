@@ -4,6 +4,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -29,6 +30,8 @@ func main() {
 
 	arbitraryHosts := pflag.BoolP("arbitrary-hosts", "H", false, "Allow connection to other hosts")
 	arbitraryPorts := pflag.BoolP("arbitrary-ports", "P", false, "Allow connections to arbitrary ports (requires arbitrary-hosts)")
+	cidrWhitelist := pflag.StringSliceP("cidr-whitelist", "c", []string{}, "CIDR whitelist for when arbitrary hosts are enabled (comma separated) (conflicts with blacklist)")
+	cidrBlacklist := pflag.StringSliceP("cidr-blacklist", "C", []string{}, "CIDR blacklist for when arbitrary hosts are enabled (comma separated) (conflicts with whitelist)")
 	host := pflag.StringP("host", "h", "localhost", "The host/ip to connect to by default")
 	port := pflag.Uint16P("port", "p", 5900, "The port to connect to by default")
 	addr := pflag.StringP("addr", "a", ":8080", "The address to listen on")
@@ -41,6 +44,8 @@ func main() {
 	envmap := map[string]string{
 		"arbitrary-hosts":   "NOVNC_ARBITRARY_HOSTS",
 		"arbitrary-ports":   "NOVNC_ARBITRARY_PORTS",
+		"cidr-whitelist":    "NOVNC_CIDR_WHITELIST",
+		"cidr-blacklist":    "NOVNC_CIDR_BLACKLIST",
 		"host":              "NOVNC_HOST",
 		"port":              "NOVNC_PORT",
 		"addr":              "NOVNC_ADDR",
@@ -79,6 +84,18 @@ func main() {
 		os.Exit(2)
 	}
 
+	cidrList, isWhitelist, err := parseCIDRBlackWhiteList(*cidrBlacklist, *cidrWhitelist)
+	if err != nil {
+		fmt.Printf("Error: error parsing cidr blacklist/whitelist: %v\n", err)
+		os.Exit(2)
+	}
+
+	if len(cidrList) != 0 {
+		if err := checkCIDRBlackWhiteListHost(*host, cidrList, isWhitelist); err != nil {
+			fmt.Printf("Warning: default host does not parse cidr blacklist/whitelist: %v", err)
+		}
+	}
+
 	if *help {
 		pflag.Usage()
 		os.Exit(1)
@@ -88,7 +105,7 @@ func main() {
 	r.Use(noCache)
 	r.Use(serverHeader)
 
-	vnc := vncHandler(*host, *port, *verbose, *arbitraryHosts, *arbitraryPorts)
+	vnc := vncHandler(*host, *port, *verbose, *arbitraryHosts, *arbitraryPorts, cidrList, isWhitelist)
 	r.Handle("/vnc", vnc)
 	r.Handle("/vnc/{host:[a-zA-Z0-9_.-]+}", vnc)
 	r.Handle("/vnc/{host:[a-zA-Z0-9_.-]+}/{port:[0-9]+}", vnc)
@@ -113,8 +130,7 @@ func main() {
 	if !*arbitraryHosts && !*arbitraryPorts && *host == "localhost" && *port == 5900 && !*basicUI {
 		fmt.Printf("Run with --help for more options\n")
 	}
-	err := http.ListenAndServe(*addr, r)
-	if err != nil {
+	if err := http.ListenAndServe(*addr, r); err != nil {
 		logf(true, "Error: %v\n", err)
 		os.Exit(1)
 	}
@@ -122,7 +138,7 @@ func main() {
 
 // vncHandler creates a handler for vnc connections. If host and port are set in
 // the url vars, they will be used if allowed.
-func vncHandler(defhost string, defport uint16, verbose, allowHosts, allowPorts bool) http.Handler {
+func vncHandler(defhost string, defport uint16, verbose, allowHosts, allowPorts bool, cidrList []*net.IPNet, isWhitelist bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var host, port string
 
@@ -140,6 +156,14 @@ func vncHandler(defhost string, defport uint16, verbose, allowHosts, allowPorts 
 			logf(verbose, "connect %s:%s disabled\n", host, port)
 			http.Error(w, "--arbitrary-ports disabled", http.StatusUnauthorized)
 			return
+		}
+
+		if len(cidrList) != 0 {
+			if err := checkCIDRBlackWhiteListHost(host, cidrList, isWhitelist); err != nil {
+				logf(verbose, "connect %s:%s not allowed: %v\n", host, port, err)
+				http.Error(w, fmt.Sprintf("connect %s:%s not allowed: %v\n", host, port, err), http.StatusUnauthorized)
+				return
+			}
 		}
 
 		logf(verbose, "connect %s:%s\n", host, port)
@@ -235,4 +259,64 @@ func wsProxyHandler(to string) websocket.Handler {
 func copyCh(dst io.Writer, src io.Reader, done chan error) {
 	_, err := io.Copy(dst, src)
 	done <- err
+}
+
+// checkCIDRBlackWhiteListHost checks the provided host/ip against a blacklist/whitelist.
+func checkCIDRBlackWhiteListHost(host string, cidrList []*net.IPNet, isWhitelist bool) error {
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return err
+	}
+	for _, ip := range ips {
+		if err := checkCIDRBlackWhiteList(ip, cidrList, isWhitelist); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// checkCIDRBlackWhiteList checks an IP against a blacklist/whitelist.
+func checkCIDRBlackWhiteList(ip net.IP, cidrList []*net.IPNet, isWhitelist bool) error {
+	var matchedCIDR *net.IPNet
+	for _, cidr := range cidrList {
+		if cidr.Contains(ip) {
+			matchedCIDR = cidr
+			break
+		}
+	}
+	if matchedCIDR == nil && isWhitelist {
+		return fmt.Errorf("ip %s does not match any whitelisted cidr", ip)
+	} else if matchedCIDR != nil && !isWhitelist {
+		return fmt.Errorf("ip %s matches blacklisted cidr %s", ip, matchedCIDR)
+	}
+	return nil
+}
+
+// parseCIDRBlackWhiteList returns either a parsed blacklist or whitelist of
+// CIDRs. If neither is specified, isWhitelist is false and the slice is empty.
+func parseCIDRBlackWhiteList(blacklist []string, whitelist []string) (cidrs []*net.IPNet, isWhitelist bool, err error) {
+	if len(blacklist) != 0 && len(whitelist) != 0 {
+		err = errors.New("only one of blacklist/whitelist can be specified")
+		return
+	}
+	if len(whitelist) != 0 {
+		isWhitelist = true
+		cidrs, err = parseCIDRList(whitelist)
+	} else {
+		cidrs, err = parseCIDRList(blacklist)
+	}
+	return
+}
+
+// parseCIDRList parses a list of CIDRs.
+func parseCIDRList(cidrs []string) ([]*net.IPNet, error) {
+	res := make([]*net.IPNet, len(cidrs))
+	for i, str := range cidrs {
+		_, cidr, err := net.ParseCIDR(str)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing CIDR '%s': %v", str, err)
+		}
+		res[i] = cidr
+	}
+	return res, nil
 }

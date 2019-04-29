@@ -16,6 +16,14 @@
             "description": "Allow connections to arbitrary ports",
             "value": "true"
         },
+        "NOVNC_CIDR_WHITELIST": {
+            "description": "CIDR whitelist for when arbitrary hosts are enabled (comma separated) (conflicts with blacklist)",
+            "value": ""
+        },
+        "NOVNC_CIDR_BLACKLIST": {
+            "description": "CIDR blacklist for when arbitrary hosts are enabled (comma separated) (conflicts with blacklist)",
+            "value": ""
+        },
         "NOVNC_BASIC_UI": {
             "description": "Hide connection options from the main screen",
             "value": "false"

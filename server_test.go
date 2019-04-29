@@ -18,7 +18,7 @@ import (
 )
 
 func TestVNCHandler(t *testing.T) {
-	testCase := func(url string, expectedStatus int, expectedAddr string, defhost string, defport uint16, allowHosts, allowPorts bool) func(*testing.T) {
+	testCase := func(url string, expectedStatus int, expectedAddr string, defhost string, defport uint16, allowHosts, allowPorts bool, cidrList []*net.IPNet, isWhitelist bool) func(*testing.T) {
 		return func(t *testing.T) {
 			r := httptest.NewRequest("GET", url, nil)
 			w := httptest.NewRecorder()
@@ -33,7 +33,7 @@ func TestVNCHandler(t *testing.T) {
 						panic(err)
 					}
 				}()
-				vnc := vncHandler(defhost, defport, false, allowHosts, allowPorts)
+				vnc := vncHandler(defhost, defport, false, allowHosts, allowPorts, cidrList, isWhitelist)
 				m := mux.NewRouter()
 				m.Handle("/vnc", vnc)
 				m.Handle("/vnc/{host:[a-zA-Z0-9_.-]+}", vnc)
@@ -54,12 +54,23 @@ func TestVNCHandler(t *testing.T) {
 			}
 		}
 	}
-	t.Run("Simple", testCase("http://example.com/vnc", 101, "localhost:5900", "localhost", 5900, false, false))
-	t.Run("SimpleBlockHost", testCase("http://example.com/vnc/test", 401, "", "localhost", 5900, false, false))
-	t.Run("SimpleBlockHostPort", testCase("http://example.com/vnc/test/1234", 401, "", "localhost", 5900, true, false))
-	t.Run("Custom", testCase("http://example.com/vnc", 101, "example.com:1234", "example.com", 1234, false, false))
-	t.Run("CustomHost", testCase("http://example.com/vnc/test", 101, "test:1234", "example.com", 1234, true, false))
-	t.Run("CustomHostPort", testCase("http://example.com/vnc/test/3456", 101, "test:3456", "example.com", 1234, true, true))
+	t.Run("Simple", testCase("http://example.com/vnc", 101, "localhost:5900", "localhost", 5900, false, false, nil, false))
+	t.Run("SimpleBlockHost", testCase("http://example.com/vnc/test", 401, "", "localhost", 5900, false, false, nil, false))
+	t.Run("SimpleBlockHostPort", testCase("http://example.com/vnc/test/1234", 401, "", "localhost", 5900, true, false, nil, false))
+
+	t.Run("Custom", testCase("http://example.com/vnc", 101, "example.com:1234", "example.com", 1234, false, false, nil, false))
+	t.Run("CustomHost", testCase("http://example.com/vnc/test", 101, "test:1234", "example.com", 1234, true, false, nil, false))
+	t.Run("CustomHostPort", testCase("http://example.com/vnc/test/3456", 101, "test:3456", "example.com", 1234, true, true, nil, false))
+
+	t.Run("CIDRWhitelistAllowIP", testCase("http://example.com/vnc/10.0.0.1", 101, "10.0.0.1:5900", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), true))
+	t.Run("CIDRWhitelistBlockIP", testCase("http://example.com/vnc/127.0.0.1", 401, "", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), true))
+	t.Run("CIDRBlacklistBlockIP", testCase("http://example.com/vnc/10.0.0.1", 401, "", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
+	t.Run("CIDRBlacklistAllowIP", testCase("http://example.com/vnc/127.0.0.1", 101, "127.0.0.1:5900", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
+
+	t.Run("CIDRWhitelistAllowHost", testCase("http://example.com/vnc/10.0.0.1.ip.dns.geek1011.net", 101, "10.0.0.1.ip.dns.geek1011.net:5900", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), true))
+	t.Run("CIDRWhitelistBlockHost", testCase("http://example.com/vnc/127.0.0.1.ip.dns.geek1011.net", 401, "", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), true))
+	t.Run("CIDRBlacklistBlockHost", testCase("http://example.com/vnc/10.0.0.1.ip.dns.geek1011.net", 401, "", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
+	t.Run("CIDRBlacklistAllowHost", testCase("http://example.com/vnc/127.0.0.1.ip.dns.geek1011.net", 101, "127.0.0.1.ip.dns.geek1011.net:5900", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
 }
 
 func TestWebsockify(t *testing.T) {
@@ -192,6 +203,51 @@ func TestCopyCh(t *testing.T) {
 	t.Run("Error", testCase(&testReader{5, time.Millisecond * 50, 2, 0}, true))
 }
 
+func TestCIDRBlackWhiteList(t *testing.T) {
+	testCase := func(cidrList []*net.IPNet, isWhitelist bool, hosts []string, shouldFail bool) func(t *testing.T) {
+		return func(t *testing.T) {
+			for _, host := range hosts {
+				err := checkCIDRBlackWhiteListHost(host, cidrList, isWhitelist)
+				if err == nil && shouldFail {
+					t.Errorf("expected %s to fail test for cidr list (isWhitelist=%t) %s", host, isWhitelist, cidrList)
+				} else if err != nil && !shouldFail {
+					t.Errorf("expected %s not to fail test for cidr list (isWhitelist=%t) %s", host, isWhitelist, cidrList)
+				}
+			}
+		}
+	}
+	t.Run("WhitelistAllow", testCase(mustParseCIDRList("10.0.0.0/24,127.0.0.0/16"), true, []string{"10.0.0.1", "127.0.1.1", "10.0.0.9.ip.dns.geek1011.net"}, false))
+	t.Run("WhitelistBlock", testCase(mustParseCIDRList("10.0.0.0/24,127.0.0.0/16"), true, []string{"11.0.0.1", "1.0.1.1", "1.2.3.4.ip.dns.geek1011.net"}, true))
+	t.Run("BlacklistAllow", testCase(mustParseCIDRList("10.0.0.0/24,127.0.0.0/16"), false, []string{"11.0.0.1", "1.0.1.1", "1.2.3.4.ip.dns.geek1011.net"}, false))
+	t.Run("BlacklistBlock", testCase(mustParseCIDRList("10.0.0.0/24,127.0.0.0/16"), false, []string{"10.0.0.1", "127.0.1.1", "10.0.0.9.ip.dns.geek1011.net"}, true))
+}
+
+func TestParseCIDRList(t *testing.T) {
+	strs := []string{
+		"127.0.0.0/16",
+		"192.168.0.0/24",
+	}
+	cidrs, err := parseCIDRList(strs)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+		return
+	}
+	for i, expected := range strs {
+		if actual := cidrs[i].String(); expected != actual {
+			t.Errorf("expected cidr %s at index %d, got %s", expected, i, actual)
+		}
+	}
+
+	strs = []string{
+		"127.0.0.0/16",
+		"192.168.0.0.123.4/24",
+	}
+	_, err = parseCIDRList(strs)
+	if err == nil {
+		t.Errorf("expected error: when parsing erroneous list")
+	}
+}
+
 // testReader is a custom io.Reader which throttles the reads and can return
 // an error at a specific point.
 type testReader struct {
@@ -222,4 +278,12 @@ func (t *testReader) MinTime() time.Duration {
 		return t.Delay * time.Duration(t.Errn)
 	}
 	return t.Delay * time.Duration(t.N)
+}
+
+func mustParseCIDRList(str string) []*net.IPNet {
+	cidrs, err := parseCIDRList(strings.Split(str, ","))
+	if err != nil {
+		panic(err)
+	}
+	return cidrs
 }
