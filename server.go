@@ -86,6 +86,7 @@ func main() {
 
 	r := mux.NewRouter()
 	r.Use(noCache)
+	r.Use(serverHeader)
 
 	vnc := vncHandler(*host, *port, *verbose, *arbitraryHosts, *arbitraryPorts)
 	r.Handle("/vnc", vnc)
@@ -158,6 +159,14 @@ func logf(cond bool, format string, a ...interface{}) {
 func noCache(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-cache")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// serverHeader sets the Server header for a http.Handler.
+func serverHeader(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Server", "easy-novnc")
 		next.ServeHTTP(w, r)
 	})
 }

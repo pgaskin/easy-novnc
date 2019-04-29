@@ -64,7 +64,7 @@ func TestVNCHandler(t *testing.T) {
 
 func TestWebsockify(t *testing.T) {
 	defer func() {
-		if err := recover(); err != nil && !strings.Contains(fmt.Sprint(err) , "not implemented") {
+		if err := recover(); err != nil && !strings.Contains(fmt.Sprint(err), "not implemented") {
 			panic(err)
 		}
 	}()
@@ -110,6 +110,18 @@ func TestNoCache(t *testing.T) {
 
 	if cc := w.Result().Header.Get("Cache-Control"); cc != "no-cache" {
 		t.Errorf("wrong Cache-Control header: %#v", cc)
+	}
+}
+
+func TestServerHeader(t *testing.T) {
+	r := httptest.NewRequest("GET", "http://example.com/go.mod", nil)
+	w := httptest.NewRecorder()
+
+	serverHeader(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	})).ServeHTTP(w, r)
+
+	if cc := w.Result().Header.Get("Server"); cc != "easy-novnc" {
+		t.Errorf("wrong Server header: %#v", cc)
 	}
 }
 
