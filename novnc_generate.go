@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/shurcooL/vfsgen"
 	"github.com/spkg/zipfs"
@@ -110,11 +109,15 @@ func modifyZip(zf string) error {
 		if filepath.Base(e.Name) == "vnc.html" {
 			found = true
 			fbuf = bytes.ReplaceAll(fbuf, []byte("</body>"), []byte(fmt.Sprintf("<script>%s</script></body>", vncScript)))
+			fi, err := os.Stat("novnc_generate.go")
+			if err != nil {
+				return err
+			}
 			w, err = zw.CreateHeader(&zip.FileHeader{
 				Name:          e.Name,
 				Flags:         e.Flags,
 				Method:        e.Method,
-				Modified:      time.Now(),
+				Modified:      fi.ModTime(),
 				Extra:         e.Extra,
 				ExternalAttrs: e.ExternalAttrs,
 			})
