@@ -1,8 +1,12 @@
 package main
 
 import (
+	"io"
 	"io/ioutil"
+	"os"
 	"testing"
+
+	"github.com/shurcooL/httpfs/vfsutil"
 )
 
 func TestNoVNC(t *testing.T) {
@@ -41,4 +45,11 @@ func TestNoVNC(t *testing.T) {
 	}
 
 	t.Logf("noVNC %s", string(buf))
+
+	err = vfsutil.WalkFiles(noVNC, "/", func(path string, info os.FileInfo, rs io.ReadSeeker, err error) error {
+		return err
+	})
+	if err != nil {
+		t.Errorf("could not read fs: %v", err)
+	}
 }
