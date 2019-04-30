@@ -10,6 +10,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -150,14 +152,35 @@ func TestServerHeader(t *testing.T) {
 }
 
 func TestFS(t *testing.T) {
-	r := httptest.NewRequest("GET", "http://example.com/go.mod", nil)
+	d, err := ioutil.TempDir("", "easy-novnc")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(d)
+
+	err = ioutil.WriteFile(filepath.Join(d, "test.txt"), []byte("foo"), 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	err = os.Mkdir(filepath.Join(d, "tmp"), 0755)
+	if err != nil {
+		panic(err)
+	}
+
+	err = ioutil.WriteFile(filepath.Join(d, "tmp", "test.txt"), []byte("foobar"), 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	r := httptest.NewRequest("GET", "http://example.com/test.txt", nil)
 	w := httptest.NewRecorder()
 
-	fs("zipfs", http.Dir(".")).ServeHTTP(w, r)
+	fs("tmp", http.Dir(d)).ServeHTTP(w, r)
 
 	buf, _ := ioutil.ReadAll(w.Result().Body)
-	if !strings.Contains(string(buf), "github.com/spkg/zipfs") {
-		if strings.Contains(string(buf), "github.com/geek1011/easy-novnc") {
+	if !strings.Contains(string(buf), "foo") {
+		if !strings.Contains(string(buf), "foobar") {
 			t.Errorf("serving from wrong subdir, got %#v", string(buf))
 		}
 		t.Errorf("wrong response, got %#v", string(buf))
