@@ -21,16 +21,16 @@ An easy way to run a [noVNC](https://github.com/novnc/noVNC) instance and proxy 
 Usage: easy-novnc [options]
 
 Options:
-  -a, --addr string         The address to listen on (env NOVNC_ADDR) (default ":8080")
-  -H, --arbitrary-hosts     Allow connection to other hosts (env NOVNC_ARBITRARY_HOSTS)
-  -P, --arbitrary-ports     Allow connections to arbitrary ports (requires arbitraryHosts) (env NOVNC_ARBITRARY_PORTS)
-  -u, --basic-ui            Hide connection options from the main screen (env NOVNC_BASIC_UI)
+  -a, --addr string              The address to listen on (env NOVNC_ADDR) (default ":8080")
+  -H, --arbitrary-hosts          Allow connection to other hosts (env NOVNC_ARBITRARY_HOSTS)
+  -P, --arbitrary-ports          Allow connections to arbitrary ports (requires arbitraryHosts) (env NOVNC_ARBITRARY_PORTS)
+  -u, --basic-ui                 Hide connection options from the main screen (env NOVNC_BASIC_UI)
   -C, --cidr-blacklist strings   CIDR blacklist for when arbitrary hosts are enabled (comma separated) (conflicts with whitelist) (env NOVNC_CIDR_BLACKLIST)
   -c, --cidr-whitelist strings   CIDR whitelist for when arbitrary hosts are enabled (comma separated) (conflicts with blacklist) (env NOVNC_CIDR_WHITELIST)
-      --default-view-only   Use view-only by default (env NOVNC_DEFAULT_VIEW_ONLY)
-      --help                Show this help text
-  -h, --host string         The host/ip to connect to by default (env NOVNC_HOST) (default "localhost")
-      --no-url-password     Do not allow password in URL params (env NOVNC_NO_URL_PASSWORD)
-  -p, --port uint16         The port to connect to by default (env NOVNC_PORT) (default 5900)
-  -v, --verbose             Show extra log info (env NOVNC_VERBOSE)
+      --default-view-only        Use view-only by default (env NOVNC_DEFAULT_VIEW_ONLY)
+      --help                     Show this help text
+  -h, --host string              The host/ip to connect to by default (env NOVNC_HOST) (default "localhost")
+      --no-url-password          Do not allow password in URL params (env NOVNC_NO_URL_PASSWORD)
+  -p, --port uint16              The port to connect to by default (env NOVNC_PORT) (default 5900)
+  -v, --verbose                  Show extra log info (env NOVNC_VERBOSE)
 ```
