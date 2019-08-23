@@ -259,9 +259,9 @@ func wsProxyHandler(to string, magic []byte) websocket.Handler {
 
 		err = <-done
 		if m.Failed() {
-			fmt.Printf("attempt to connect to non-VNC port (%s, %#v)\n", to, string(m.Magic()))
+			logf(true, "attempt to connect to non-VNC port (%s, %#v)\n", to, string(m.Magic()))
 		} else if err != nil {
-			fmt.Println(err)
+			logf(true, "%v\n", err)
 		}
 
 		conn.Close()
