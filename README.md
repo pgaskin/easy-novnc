@@ -3,11 +3,12 @@ An easy way to run a [noVNC](https://github.com/novnc/noVNC) instance and proxy 
 
 ## Features
 - Clean start page.
+- CIDR whitelist/blacklist.
 - Optionally allow connections to arbitrary hosts (and ports).
-- Single binary, no dependencies.
+- Ensures the target port is a VNC server to prevent tunneling to unauthorized ports.
 - Can be configured using environment variables or command line flags (but works out-of-the box).
 - IPv6 support.
-- CIDR whitelist/blacklist.
+- Single binary, no dependencies.
 - Easy setup.
 
 ## Installation

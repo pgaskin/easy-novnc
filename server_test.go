@@ -94,7 +94,7 @@ func TestWebsockify(t *testing.T) {
 			panic(err)
 		}
 	}()
-	websockify("google.com:80").ServeHTTP(nilResponseWriter{}, httptest.NewRequest("GET", "/", nil))
+	websockify("google.com:80", []byte(nil)).ServeHTTP(nilResponseWriter{}, httptest.NewRequest("GET", "/", nil))
 	// TODO: proper testing
 }
 
@@ -323,6 +323,55 @@ func TestIPv6Regexp(t *testing.T) {
 		if !re.MatchString(ipv6) {
 			t.Errorf("expected regexp to match %#v", ipv6)
 		}
+	}
+}
+
+func TestMagicCheck(t *testing.T) {
+	for _, tc := range []struct {
+		Name string
+
+		Magic []byte
+		Input []byte
+
+		EOFAt  int
+		Failed bool
+	}{
+		{"Good_BothEmpty", []byte(""), []byte(""), 0, false},
+		{"Good_EmptyMagicWithInput", []byte(""), []byte(" "), 1, false},
+		{"Good_EmptyInputWithMagic", []byte("RFB"), []byte(""), 0, false},
+		{"Good_ExactMatch", []byte("RFB"), []byte("RFB"), 3, false},
+		{"Good_ExactMatchWithExtra", []byte("RFB"), []byte("RFB 005.000"), 11, false},
+		{"Bad_NoMatch", []byte("RFB"), []byte("..."), 0, true},
+		{"Bad_PartialMatch", []byte("RFB"), []byte("R.."), 1, true},
+	} {
+		t.Run(tc.Name, func(t *testing.T) {
+			m := newMagicCheck(bytes.NewReader(tc.Input), tc.Magic)
+			var buf []byte
+
+			rbuf := make([]byte, 1)
+			for {
+				n, err := m.Read(rbuf)
+				if err == io.EOF {
+					if n, err := m.Read(rbuf); err != io.EOF || n != 0 {
+						t.Errorf("expected io.EOF to stick with no bytes read")
+					}
+					if tc.EOFAt < 0 {
+						t.Errorf("unexpected eof after %d bytes", len(buf))
+					} else if len(buf) != tc.EOFAt {
+						t.Errorf("unexpected eof after %d bytes, expected %d bytes (buf: %s)", len(buf), tc.EOFAt, string(buf))
+					} else if m.Failed() != tc.Failed {
+						t.Errorf("expected failed=%t, got %t", tc.Failed, m.Failed())
+					} else if !m.Failed() && len(tc.Input) >= len(tc.Magic) && !bytes.Equal(m.Magic(), tc.Magic) {
+						t.Errorf("shouldn't have passed the magic check: %s != %s", string(m.Magic()), string(tc.Magic))
+					}
+					break
+				} else if err != nil {
+					panic(err)
+				} else if n > 0 {
+					buf = append(buf, rbuf[:n]...)
+				}
+			}
+		})
 	}
 }
 

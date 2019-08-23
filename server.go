@@ -178,7 +178,7 @@ func vncHandler(defhost string, defport uint16, verbose, allowHosts, allowPorts 
 
 		logf(verbose, "connect %s\n", addr)
 		w.Header().Set("X-Target-Addr", addr)
-		websockify(addr).ServeHTTP(w, r)
+		websockify(addr, []byte("RFB")).ServeHTTP(w, r)
 	})
 }
 
@@ -223,11 +223,11 @@ func addPrefix(prefix string, h http.Handler) http.Handler {
 }
 
 // websockify returns an http.Handler which proxies websocket requests to a tcp
-// address.
-func websockify(to string) http.Handler {
+// address and checks magic bytes.
+func websockify(to string, magic []byte) http.Handler {
 	return websocket.Server{
 		Handshake: wsProxyHandshake,
-		Handler:   wsProxyHandler(to),
+		Handler:   wsProxyHandler(to, magic),
 	}
 }
 
@@ -239,8 +239,9 @@ func wsProxyHandshake(config *websocket.Config, r *http.Request) error {
 	return nil
 }
 
-// wsProxyHandler is a websocket.Handler which proxies to a tcp address.
-func wsProxyHandler(to string) websocket.Handler {
+// wsProxyHandler is a websocket.Handler which proxies to a tcp address with a
+// magic byte check.
+func wsProxyHandler(to string, magic []byte) websocket.Handler {
 	return func(ws *websocket.Conn) {
 		conn, err := net.Dial("tcp", to)
 		if err != nil {
@@ -250,12 +251,16 @@ func wsProxyHandler(to string) websocket.Handler {
 
 		ws.PayloadType = websocket.BinaryFrame
 
+		m := newMagicCheck(conn, magic)
+
 		done := make(chan error)
 		go copyCh(conn, ws, done)
-		go copyCh(ws, conn, done)
+		go copyCh(ws, m, done)
 
 		err = <-done
-		if err != nil {
+		if m.Failed() {
+			fmt.Printf("attempt to connect to non-VNC port (%s, %#v)\n", to, string(m.Magic()))
+		} else if err != nil {
 			fmt.Println(err)
 		}
 
@@ -329,4 +334,48 @@ func parseCIDRList(cidrs []string) ([]*net.IPNet, error) {
 		res[i] = cidr
 	}
 	return res, nil
+}
+
+// magicCheck implements an efficient wrapper around an io.Reader which checks
+// for magic bytes at the beginning, and will return a sticky io.EOF and stop
+// reading from the original reader as soon as a mismatch starts.
+type magicCheck struct {
+	rdr io.Reader
+	exp []byte
+	len int
+	rem int
+	act []byte
+	fld bool
+}
+
+func newMagicCheck(r io.Reader, magic []byte) *magicCheck {
+	return &magicCheck{r, magic, len(magic), len(magic), make([]byte, len(magic)), false}
+}
+
+// Failed returns true if the magic check has failed (note that it returns false
+// if the source io.Reader reached io.EOF before the check was complete).
+func (m *magicCheck) Failed() bool {
+	return m.fld
+}
+
+// Magic returns the magic which was read so far.
+func (m *magicCheck) Magic() []byte {
+	return m.act
+}
+
+func (m *magicCheck) Read(buf []byte) (n int, err error) {
+	if m.fld {
+		return 0, io.EOF
+	}
+	n, err = m.rdr.Read(buf)
+	if err == nil && n > 0 && m.rem > 0 {
+		m.rem -= copy(m.act[m.len-m.rem:], buf[:n])
+		for i := 0; i < m.len-m.rem; i++ {
+			if m.act[i] != m.exp[i] {
+				m.fld = true
+				return 0, io.EOF
+			}
+		}
+	}
+	return n, err
 }
