@@ -24,7 +24,7 @@ Usage: easy-novnc [options]
 Options:
   -a, --addr string              The address to listen on (env NOVNC_ADDR) (default ":8080")
   -H, --arbitrary-hosts          Allow connection to other hosts (env NOVNC_ARBITRARY_HOSTS)
-  -P, --arbitrary-ports          Allow connections to arbitrary ports (requires arbitraryHosts) (env NOVNC_ARBITRARY_PORTS)
+  -P, --arbitrary-ports          Allow connections to arbitrary ports (requires arbitrary-hosts) (env NOVNC_ARBITRARY_PORTS)
   -u, --basic-ui                 Hide connection options from the main screen (env NOVNC_BASIC_UI)
   -C, --cidr-blacklist strings   CIDR blacklist for when arbitrary hosts are enabled (comma separated) (conflicts with whitelist) (env NOVNC_CIDR_BLACKLIST)
   -c, --cidr-whitelist strings   CIDR whitelist for when arbitrary hosts are enabled (comma separated) (conflicts with blacklist) (env NOVNC_CIDR_WHITELIST)
