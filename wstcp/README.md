@@ -1,8 +1,12 @@
 # wstcp
 Tunnels local VNC connections over TCP to an easy-novnc server over WebSockets.
 
-It is available as a Docker image, and can be used like: `docker run -p 5900 --rm -it geek1011/easy-novnc:wstcp-latest proxy_host ...`.
+## Installation
+- A Docker image is available, and can be used like: `docker run -p 5900 --rm -it geek1011/easy-novnc:wstcp-latest proxy_host ...`.
+- Binaries for the latest commit can be downloaded [here](https://ci.appveyor.com/project/geek1011/easy-novnc/build/artifacts).
+- You can build your own binaries with go 1.13 or newer using `go get github.com/geek1011/easy-novnc/wstcp` or by cloning this repo and running `go build ./wstcp`.
 
+## Usage
 ```
 Usage: wstcp [options] proxy_host [target_host [target_port]]
 
