@@ -233,7 +233,9 @@ func websockify(to string, magic []byte) http.Handler {
 
 // wsProxyHandshake is a handshake handler for a websocket.Server.
 func wsProxyHandshake(config *websocket.Config, r *http.Request) error {
-	config.Protocol = []string{"binary"}
+	if r.Header.Get("Sec-WebSocket-Protocol") != "" {
+		config.Protocol = []string{"binary"}
+	}
 	r.Header.Set("Access-Control-Allow-Origin", "*")
 	r.Header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE")
 	return nil
