@@ -5,12 +5,12 @@ image: ubuntu
 version: '{build}'
 
 cache:
-- go1.12.1.deb
+- go1.13.deb
 
 install:
 - 'if [[ $APPVEYOR_REPO_TAG == "true" ]]; then appveyor UpdateBuild -Version "$(git describe --tags --always)"; else appveyor UpdateBuild -Version "$(git rev-parse --short HEAD)"; fi'
-- 'wget --no-clobber -O go1.12.1.deb https://deb.geek1011.net/pool/main/g/go/go_1.12.1-godeb1_amd64.deb || true'
-- sudo dpkg -i go1.12.1.deb
+- 'wget --no-clobber -O go1.13.deb https://deb.geek1011.net/pool/main/g/go/go_1.13-godeb1_amd64.deb || true'
+- sudo dpkg -i go1.13.deb
 - go mod download
 
 build_script:
