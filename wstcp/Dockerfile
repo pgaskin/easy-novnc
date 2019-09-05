@@ -3,9 +3,9 @@ ADD . /src
 WORKDIR /src
 RUN apk add --no-cache git
 RUN go mod download
-RUN go build .
+RUN go build ./wstcp
 
 FROM alpine:latest
-COPY --from=build /src/easy-novnc /
-EXPOSE 8080
-ENTRYPOINT ["/easy-novnc"]
+COPY --from=build /src/wstcp /
+EXPOSE 5900
+ENTRYPOINT ["/wstcp"]

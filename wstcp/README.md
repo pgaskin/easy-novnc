@@ -1,6 +1,8 @@
 # wstcp
 Tunnels local VNC connections over TCP to an easy-novnc server over WebSockets.
 
+It is available as a Docker image, and can be used like: `docker run -p 5900 --rm -it geek1011/easy-novnc:wstcp-latest proxy_host ...`.
+
 ```
 Usage: wstcp [options] proxy_host [target_host [target_port]]
 
