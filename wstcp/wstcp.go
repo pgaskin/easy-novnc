@@ -97,7 +97,7 @@ func detect(host string, verbose bool) (string, error) {
 
 		resp, herr := c.Get(host)
 		if herr != nil {
-			err = fmt.Errorf("proto %s: %w", proto, herr)
+			err = fmt.Errorf("proto %s: %v", proto, herr)
 			if verbose {
 				fmt.Printf(": %v\n", err)
 			}

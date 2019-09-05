@@ -10,6 +10,7 @@ An easy way to run a [noVNC](https://github.com/novnc/noVNC) instance and proxy 
 - IPv6 support.
 - Single binary, no dependencies.
 - Easy setup.
+- Optional [client](./wstcp) for local TCP connections tunneled through WebSockets.
 
 ## Installation
 - Binaries for the latest commit can be downloaded [here](https://ci.appveyor.com/project/geek1011/easy-novnc/build/artifacts).
