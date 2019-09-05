@@ -1,6 +1,6 @@
 image: ubuntu
 
-# stack: go 1.12
+# stack: go 1.13
 
 version: '{build}'
 
@@ -15,16 +15,24 @@ install:
 
 build_script:
 - go test -v ./...
-- GOOS=windows GOARCH=386 go build -o easy-novnc_windows.exe
-- GOOS=darwin GOARCH=amd64 go build -o easy-novnc_darwin-64bit
-- GOOS=linux GOARCH=386 go build -o easy-novnc_linux-32bit
-- GOOS=linux GOARCH=amd64 go build -o easy-novnc_linux-64bit
-- GOOS=linux GOARCH=arm go build -o easy-novnc_linux-arm
+
+- GOOS=windows GOARCH=386   go build -o easy-novnc_windows.exe  .
+- GOOS=darwin  GOARCH=amd64 go build -o easy-novnc_darwin-64bit .
+- GOOS=linux   GOARCH=386   go build -o easy-novnc_linux-32bit  .
+- GOOS=linux   GOARCH=amd64 go build -o easy-novnc_linux-64bit  .
+- GOOS=linux   GOARCH=arm   go build -o easy-novnc_linux-arm    .
+
+- GOOS=windows GOARCH=386   go build -o wstcp_windows.exe       ./wstcp
+- GOOS=darwin  GOARCH=amd64 go build -o wstcp_darwin-64bit      ./wstcp
+- GOOS=linux   GOARCH=386   go build -o wstcp_linux-32bit       ./wstcp
+- GOOS=linux   GOARCH=amd64 go build -o wstcp_linux-64bit       ./wstcp
+- GOOS=linux   GOARCH=arm   go build -o wstcp_linux-arm         ./wstcp
 
 test: off
 
 artifacts:
 - path: easy-novnc_*
+- path: wstcp_*
 
 deploy:
   release: $(APPVEYOR_BUILD_VERSION)
