@@ -15,6 +15,7 @@ import (
 )
 
 func main() {
+	retry := pflag.IntP("retry", "r", -1, "Interval (seconds) to retry initial connection on failure")
 	listen := pflag.StringP("listen", "l", ":5900", "Address to listen for connections on")
 	help := pflag.Bool("help", false, "Show this help text")
 	pflag.Parse()
@@ -31,24 +32,39 @@ func main() {
 
 	host, addr, port := pflag.Arg(0), pflag.Arg(1), pflag.Arg(2)
 
-	host, err := detect(host, true)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-
-	url := host + "/vnc"
-	if addr != "" {
-		url += "/" + addr
-		if port != "" {
-			url += "/" + port
+	var url string
+	for {
+		host, err := detect(host, true)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			if *retry >= 0 {
+				fmt.Fprintf(os.Stderr, "Retrying after %d seconds...\n", *retry)
+				time.Sleep(time.Second * time.Duration(*retry))
+				continue
+			}
+			os.Exit(1)
 		}
-	}
 
-	fmt.Printf("Testing connection to %s.\n", url)
-	if err := check(url); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		url = host + "/vnc"
+		if addr != "" {
+			url += "/" + addr
+			if port != "" {
+				url += "/" + port
+			}
+		}
+
+		fmt.Printf("Testing connection to %s.\n", url)
+		if err := check(url); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			if *retry >= 0 {
+				fmt.Fprintf(os.Stderr, "Retrying after %d seconds...\n", *retry)
+				time.Sleep(time.Second * time.Duration(*retry))
+				continue
+			}
+			os.Exit(1)
+		}
+
+		break
 	}
 
 	fmt.Printf("Listening %s => %s.\n", *listen, url)
