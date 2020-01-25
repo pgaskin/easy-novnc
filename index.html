@@ -84,13 +84,17 @@
                 {{if not .noURLPassword}}
                 <div class="field">
                     <label for="password">Password</label>
-                    <input type="password" name="password" id="password" placeholder="Password (can be specified later)" autofocus>
+                    <input type="password" name="password" id="password" placeholder="Password" autofocus>
                 </div>
                 {{end}}
 
                 <input type="hidden" name="path" id="path" value="vnc">
                 <input type="hidden" name="autoconnect" id="autoconnect" value="true">
-                <input type="hidden" name="resize" id="resize" value="scale">
+
+                {{range $key, $value := .params}}
+                <input type="hidden" name="{{$key}}" id="{{$key}}" value="{{$value}}">
+                {{end}}
+
                 <input class="ui button" type="submit" value="Connect">
 
                 {{if not .basicUI}}

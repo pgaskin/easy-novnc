@@ -41,6 +41,7 @@ func main() {
 	basicUI := pflag.BoolP("basic-ui", "u", false, "Hide connection options from the main screen")
 	verbose := pflag.BoolP("verbose", "v", false, "Show extra log info")
 	noURLPassword := pflag.Bool("no-url-password", false, "Do not allow password in URL params")
+	novncParams := pflag.StringSlice("novnc-params", nil, "Extra URL params for noVNC (advanced) (comma separated key-value pairs) (e.g. resize=remote)")
 	defaultViewOnly := pflag.Bool("default-view-only", false, "Use view-only by default")
 	help := pflag.Bool("help", false, "Show this help text")
 
@@ -54,6 +55,7 @@ func main() {
 		"addr":              "NOVNC_ADDR",
 		"basic-ui":          "NOVNC_BASIC_UI",
 		"no-url-password":   "NOVNC_NO_URL_PASSWORD",
+		"novnc-params":      "NOVNC_PARAMS",
 		"default-view-only": "NOVNC_DEFAULT_VIEW_ONLY",
 		"verbose":           "NOVNC_VERBOSE",
 	}
@@ -95,7 +97,30 @@ func main() {
 
 	if len(cidrList) != 0 {
 		if err := checkCIDRBlackWhiteListHost(*host, cidrList, isWhitelist); err != nil {
-			fmt.Printf("Warning: default host does not parse cidr blacklist/whitelist: %v", err)
+			fmt.Printf("Warning: default host does not parse cidr blacklist/whitelist: %v\n", err)
+		}
+	}
+
+	novncParamsMap := map[string]string{
+		"resize": "scale",
+	}
+	for _, p := range *novncParams {
+		spl := strings.SplitN(p, "=", 2)
+		if len(spl) != 2 {
+			fmt.Printf("Error: error parsing noVNC params: must be in key=value format\n")
+			os.Exit(2)
+		}
+
+		// https://github.com/novnc/noVNC/blob/master/docs/EMBEDDING.md
+		switch spl[0] {
+		case "resize", "logging", "repeaterID", "reconnect_delay", "view_clip":
+			novncParamsMap[spl[0]] = spl[1]
+		case "encrypt", "reconnect", "path", "password", "view_only", "show_dot", "bell", "autoconnect":
+			fmt.Printf("Error: error parsing noVNC params: option %#v reserved for use by easy-novnc.\n", spl[0])
+			os.Exit(2)
+		default:
+			fmt.Printf("Error: error parsing noVNC params: unknown option %#v.\n", spl[0])
+			os.Exit(2)
 		}
 	}
 
@@ -128,6 +153,7 @@ func main() {
 			"basicUI":         *basicUI,
 			"noURLPassword":   *noURLPassword,
 			"defaultViewOnly": *defaultViewOnly,
+			"params":          novncParamsMap,
 		})
 	})
 
