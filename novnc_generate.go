@@ -21,7 +21,7 @@ const noVNCZip = "https://github.com/novnc/noVNC/archive/master.zip"
 const vncScript = `
 	try {
 		function parseQuery(e){for(var o=e.split("&"),n={},t=0;t<o.length;t++){var d=o[t].split("="),p=decodeURIComponent(d[0]),r=decodeURIComponent(d[1]);if(void 0===n[p])n[p]=decodeURIComponent(r);else if("string"==typeof n[p]){var i=[n[p],decodeURIComponent(r)];n[p]=i}else n[p].push(decodeURIComponent(r))}return n};
-		fetch(parseQuery(window.location.search)["path"]).then(function(resp) {
+		fetch(parseQuery(window.location.search.replace(/^\?/, ""))["path"]).then(function(resp) {
 			return resp.text();
 		}).then(function (txt) {
 			if (txt.indexOf("not websocket") == -1) alert(txt);
