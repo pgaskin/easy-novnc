@@ -85,19 +85,19 @@ func main() {
 	pflag.Parse()
 
 	if *arbitraryPorts && !*arbitraryHosts {
-		fmt.Printf("Error: arbitrary-ports requires arbitrary-hosts to be enabled\n")
+		fmt.Printf("Error: arbitrary-ports requires arbitrary-hosts to be enabled.\n")
 		os.Exit(2)
 	}
 
 	cidrList, isWhitelist, err := parseCIDRBlackWhiteList(*cidrBlacklist, *cidrWhitelist)
 	if err != nil {
-		fmt.Printf("Error: error parsing cidr blacklist/whitelist: %v\n", err)
+		fmt.Printf("Error: error parsing cidr blacklist/whitelist: %v.\n", err)
 		os.Exit(2)
 	}
 
 	if len(cidrList) != 0 {
 		if err := checkCIDRBlackWhiteListHost(*host, cidrList, isWhitelist); err != nil {
-			fmt.Printf("Warning: default host does not parse cidr blacklist/whitelist: %v\n", err)
+			fmt.Printf("Warning: default host does not parse cidr blacklist/whitelist: %v.\n", err)
 		}
 	}
 
@@ -107,7 +107,7 @@ func main() {
 	for _, p := range *novncParams {
 		spl := strings.SplitN(p, "=", 2)
 		if len(spl) != 2 {
-			fmt.Printf("Error: error parsing noVNC params: must be in key=value format\n")
+			fmt.Printf("Error: error parsing noVNC params: must be in key=value format.\n")
 			os.Exit(2)
 		}
 
@@ -162,7 +162,7 @@ func main() {
 		fmt.Printf("Run with --help for more options\n")
 	}
 	if err := http.ListenAndServe(*addr, r); err != nil {
-		logf(true, "Error: %v\n", err)
+		logf(true, "Error: %v.\n", err)
 		os.Exit(1)
 	}
 }
