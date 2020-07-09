@@ -13,7 +13,7 @@ An easy way to run a [noVNC](https://github.com/novnc/noVNC) instance and proxy 
 - Optional [client](./wstcp) for local TCP connections tunneled through WebSockets.
 
 ## Installation
-- Binaries for the latest commit can be downloaded [here](https://ci.appveyor.com/project/geek1011/easy-novnc/build/artifacts).
+- Binaries for the latest commit can be downloaded [here](https://ci.appveyor.com/project/pgaskin/easy-novnc/build/artifacts).
 - It can also be [deployed to Heroku](https://heroku.com/deploy).
 - A Docker image is available: [geek1011/easy-novnc:latest](https://hub.docker.com/r/geek1011/easy-novnc).
 - You can build your own binaries with go 1.13 or newer using `go get github.com/geek1011/easy-novnc` or by cloning this repo and running `go build`.
