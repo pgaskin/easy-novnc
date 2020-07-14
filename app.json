@@ -1,7 +1,7 @@
 {
     "name": "easy-novnc",
     "description": "An easy way to run a noVNC instance and proxy with a single binary.",
-    "repository": "https://github.com/geek1011/easy-novnc",
+    "repository": "https://github.com/pgaskin/easy-novnc",
     "keywords": [
         "novnc",
         "vnc",
