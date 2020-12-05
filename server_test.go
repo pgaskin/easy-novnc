@@ -21,7 +21,7 @@ import (
 )
 
 func TestVNCHandler(t *testing.T) {
-	testCase := func(url string, expectedStatus int, expectedAddr string, defhost string, defport uint16, allowHosts, allowPorts bool, cidrList []*net.IPNet, isWhitelist bool) func(*testing.T) {
+	testCase := func(url string, expectedStatus int, expectedAddr string, defhost string, defport uint16, allowHosts, allowPorts bool, hostOptions []hostOption, cidrList []*net.IPNet, isWhitelist bool) func(*testing.T) {
 		return func(t *testing.T) {
 			r := httptest.NewRequest("GET", url, nil)
 			w := httptest.NewRecorder()
@@ -36,7 +36,7 @@ func TestVNCHandler(t *testing.T) {
 						panic(err)
 					}
 				}()
-				vnc := vncHandler(defhost, defport, false, allowHosts, allowPorts, cidrList, isWhitelist)
+				vnc := vncHandler(defhost, defport, false, allowHosts, allowPorts, hostOptions, cidrList, isWhitelist)
 				m := mux.NewRouter()
 				m.Handle("/vnc", vnc)
 				m.Handle("/vnc/{host:[a-zA-Z0-9_.-]+}", vnc)
@@ -59,33 +59,42 @@ func TestVNCHandler(t *testing.T) {
 			}
 		}
 	}
-	t.Run("Simple", testCase("http://example.com/vnc", 101, "localhost:5900", "localhost", 5900, false, false, nil, false))
-	t.Run("SimpleBlockHost", testCase("http://example.com/vnc/test", 401, "", "localhost", 5900, false, false, nil, false))
-	t.Run("SimpleBlockHostPort", testCase("http://example.com/vnc/test/1234", 401, "", "localhost", 5900, true, false, nil, false))
 
-	t.Run("Custom", testCase("http://example.com/vnc", 101, "example.com:1234", "example.com", 1234, false, false, nil, false))
-	t.Run("CustomHost", testCase("http://example.com/vnc/test", 101, "test:1234", "example.com", 1234, true, false, nil, false))
-	t.Run("CustomHostPort", testCase("http://example.com/vnc/test/3456", 101, "test:3456", "example.com", 1234, true, true, nil, false))
+	emptyHostOptions := make([]hostOption, 0)
+	t.Run("Simple", testCase("http://example.com/vnc", 101, "localhost:5900", "localhost", 5900, false, false, emptyHostOptions, nil, false))
+	t.Run("SimpleBlockHost", testCase("http://example.com/vnc/test", 401, "", "localhost", 5900, false, false, emptyHostOptions, nil, false))
+	t.Run("SimpleBlockHostPort", testCase("http://example.com/vnc/test/1234", 401, "", "localhost", 5900, true, false, emptyHostOptions, nil, false))
 
-	t.Run("CIDRWhitelistAllowIP", testCase("http://example.com/vnc/10.0.0.1", 101, "10.0.0.1:5900", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), true))
-	t.Run("CIDRWhitelistBlockIP", testCase("http://example.com/vnc/127.0.0.1", 401, "", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), true))
-	t.Run("CIDRBlacklistBlockIP", testCase("http://example.com/vnc/10.0.0.1", 401, "", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
-	t.Run("CIDRBlacklistAllowIP", testCase("http://example.com/vnc/127.0.0.1/5900", 101, "127.0.0.1:5900", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
+	t.Run("Custom", testCase("http://example.com/vnc", 101, "example.com:1234", "example.com", 1234, false, false, emptyHostOptions, nil, false))
+	t.Run("CustomHost", testCase("http://example.com/vnc/test", 101, "test:1234", "example.com", 1234, true, false, emptyHostOptions, nil, false))
+	t.Run("CustomHostPort", testCase("http://example.com/vnc/test/3456", 101, "test:3456", "example.com", 1234, true, true, emptyHostOptions, nil, false))
 
-	t.Run("CIDRWhitelistAllowHost", testCase("http://example.com/vnc/10.0.0.1.ip.dns.geek1011.net", 101, "10.0.0.1.ip.dns.geek1011.net:5900", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), true))
-	t.Run("CIDRWhitelistBlockHost", testCase("http://example.com/vnc/127.0.0.1.ip.dns.geek1011.net", 401, "", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), true))
-	t.Run("CIDRBlacklistBlockHost", testCase("http://example.com/vnc/10.0.0.1.ip.dns.geek1011.net", 401, "", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
-	t.Run("CIDRBlacklistAllowHost", testCase("http://example.com/vnc/127.0.0.1.ip.dns.geek1011.net/5900", 101, "127.0.0.1.ip.dns.geek1011.net:5900", "localhost", 5900, true, true, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
+	simpleHostOption := append(emptyHostOptions, hostOption{
+		Name: "dummy",
+		Host: "hostoption",
+		Port: "5900",
+	})
+	t.Run("SingleHostOption", testCase("http://example.com/vnc/hostoption/5900", 101, "hostoption:5900", "example.com", 1234, true, true, simpleHostOption, nil, false))
 
-	t.Run("CIDRWhitelistAllowIPv6", testCase("http://example.com/vnc/a%3Ab%3Ac%3Ad%3Aa%3Ab%3Ac%3Ad", 101, "[a:b:c:d:a:b:c:d]:5900", "localhost", 5900, true, true, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), true))
-	t.Run("CIDRWhitelistBlockIPv6", testCase("http://example.com/vnc/a%3Ab%3Ac%3Ad%3Aa%3Ab%3Ad%3Ad", 401, "", "localhost", 5900, true, true, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), true))
-	t.Run("CIDRBlacklistBlockIPv6", testCase("http://example.com/vnc/a%3Ab%3Ac%3Ad%3Aa%3Ab%3Ac%3Ad", 401, "", "localhost", 5900, true, true, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), false))
-	t.Run("CIDRBlacklistAllowIPv6", testCase("http://example.com/vnc/a%3Ab%3Ac%3Ad%3Aa%3Ab%3Ad%3Ad/5900", 101, "[a:b:c:d:a:b:d:d]:5900", "localhost", 5900, true, true, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), false))
+	t.Run("CIDRWhitelistAllowIP", testCase("http://example.com/vnc/10.0.0.1", 101, "10.0.0.1:5900", "localhost", 5900, true, true, emptyHostOptions, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), true))
+	t.Run("CIDRWhitelistBlockIP", testCase("http://example.com/vnc/127.0.0.1", 401, "", "localhost", 5900, true, true, emptyHostOptions, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), true))
+	t.Run("CIDRBlacklistBlockIP", testCase("http://example.com/vnc/10.0.0.1", 401, "", "localhost", 5900, true, true, emptyHostOptions, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
+	t.Run("CIDRBlacklistAllowIP", testCase("http://example.com/vnc/127.0.0.1/5900", 101, "127.0.0.1:5900", "localhost", 5900, true, true, emptyHostOptions, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
 
-	t.Run("CIDRWhitelistAllowHostv6", testCase("http://example.com/vnc/a.b.c.d.a.b.c.d.ip.dns.geek1011.net", 101, "a.b.c.d.a.b.c.d.ip.dns.geek1011.net:5900", "localhost", 5900, true, true, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), true))
-	t.Run("CIDRWhitelistBlockHostv6", testCase("http://example.com/vnc/a.b.c.d.a.b.d.d.ip.dns.geek1011.net", 401, "", "localhost", 5900, true, true, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), true))
-	t.Run("CIDRBlacklistBlockHostv6", testCase("http://example.com/vnc/a.b.c.d.a.b.c.d.ip.dns.geek1011.net", 401, "", "localhost", 5900, true, true, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), false))
-	t.Run("CIDRBlacklistAllowHostv6", testCase("http://example.com/vnc/a.b.c.d.a.b.d.d.ip.dns.geek1011.net/5900", 101, "a.b.c.d.a.b.d.d.ip.dns.geek1011.net:5900", "localhost", 5900, true, true, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), false))
+	t.Run("CIDRWhitelistAllowHost", testCase("http://example.com/vnc/10.0.0.1.ip.dns.geek1011.net", 101, "10.0.0.1.ip.dns.geek1011.net:5900", "localhost", 5900, true, true, emptyHostOptions, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), true))
+	t.Run("CIDRWhitelistBlockHost", testCase("http://example.com/vnc/127.0.0.1.ip.dns.geek1011.net", 401, "", "localhost", 5900, true, true, emptyHostOptions, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), true))
+	t.Run("CIDRBlacklistBlockHost", testCase("http://example.com/vnc/10.0.0.1.ip.dns.geek1011.net", 401, "", "localhost", 5900, true, true, emptyHostOptions, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
+	t.Run("CIDRBlacklistAllowHost", testCase("http://example.com/vnc/127.0.0.1.ip.dns.geek1011.net/5900", 101, "127.0.0.1.ip.dns.geek1011.net:5900", "localhost", 5900, true, true, emptyHostOptions, mustParseCIDRList("192.168.0.0/24,10.0.0.0/24"), false))
+
+	t.Run("CIDRWhitelistAllowIPv6", testCase("http://example.com/vnc/a%3Ab%3Ac%3Ad%3Aa%3Ab%3Ac%3Ad", 101, "[a:b:c:d:a:b:c:d]:5900", "localhost", 5900, true, true, emptyHostOptions, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), true))
+	t.Run("CIDRWhitelistBlockIPv6", testCase("http://example.com/vnc/a%3Ab%3Ac%3Ad%3Aa%3Ab%3Ad%3Ad", 401, "", "localhost", 5900, true, true, emptyHostOptions, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), true))
+	t.Run("CIDRBlacklistBlockIPv6", testCase("http://example.com/vnc/a%3Ab%3Ac%3Ad%3Aa%3Ab%3Ac%3Ad", 401, "", "localhost", 5900, true, true, emptyHostOptions, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), false))
+	t.Run("CIDRBlacklistAllowIPv6", testCase("http://example.com/vnc/a%3Ab%3Ac%3Ad%3Aa%3Ab%3Ad%3Ad/5900", 101, "[a:b:c:d:a:b:d:d]:5900", "localhost", 5900, true, true, emptyHostOptions, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), false))
+
+	t.Run("CIDRWhitelistAllowHostv6", testCase("http://example.com/vnc/a.b.c.d.a.b.c.d.ip.dns.geek1011.net", 101, "a.b.c.d.a.b.c.d.ip.dns.geek1011.net:5900", "localhost", 5900, true, true, emptyHostOptions, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), true))
+	t.Run("CIDRWhitelistBlockHostv6", testCase("http://example.com/vnc/a.b.c.d.a.b.d.d.ip.dns.geek1011.net", 401, "", "localhost", 5900, true, true, emptyHostOptions, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), true))
+	t.Run("CIDRBlacklistBlockHostv6", testCase("http://example.com/vnc/a.b.c.d.a.b.c.d.ip.dns.geek1011.net", 401, "", "localhost", 5900, true, true, emptyHostOptions, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), false))
+	t.Run("CIDRBlacklistAllowHostv6", testCase("http://example.com/vnc/a.b.c.d.a.b.d.d.ip.dns.geek1011.net/5900", 101, "a.b.c.d.a.b.d.d.ip.dns.geek1011.net:5900", "localhost", 5900, true, true, emptyHostOptions, mustParseCIDRList("a:b:c:d:a:b:c:d/120"), false))
 }
 
 func TestWebsockify(t *testing.T) {

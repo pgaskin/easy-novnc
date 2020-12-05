@@ -31,6 +31,7 @@ func main() {
 		pflag.PrintDefaults()
 	}
 
+	hostOptions := pflag.StringSliceP("host-option", "O", []string{}, "List of static hosts allowed to connect to (comma separated, name:host:port formatted)")
 	arbitraryHosts := pflag.BoolP("arbitrary-hosts", "H", false, "Allow connection to other hosts")
 	arbitraryPorts := pflag.BoolP("arbitrary-ports", "P", false, "Allow connections to arbitrary ports (requires arbitrary-hosts)")
 	cidrWhitelist := pflag.StringSliceP("cidr-whitelist", "c", []string{}, "CIDR whitelist for when arbitrary hosts are enabled (comma separated) (conflicts with blacklist)")
@@ -46,6 +47,7 @@ func main() {
 	help := pflag.Bool("help", false, "Show this help text")
 
 	envmap := map[string]string{
+		"host-option":       "NOVNC_HOST_OPTION",
 		"arbitrary-hosts":   "NOVNC_ARBITRARY_HOSTS",
 		"arbitrary-ports":   "NOVNC_ARBITRARY_PORTS",
 		"cidr-whitelist":    "NOVNC_CIDR_WHITELIST",
@@ -133,7 +135,7 @@ func main() {
 	r.Use(noCache)
 	r.Use(serverHeader)
 
-	vnc := vncHandler(*host, *port, *verbose, *arbitraryHosts, *arbitraryPorts, cidrList, isWhitelist)
+	vnc := vncHandler(*host, *port, *verbose, *arbitraryHosts, *arbitraryPorts, parseHostOptions(*hostOptions), cidrList, isWhitelist)
 	r.Handle("/vnc", vnc)
 	r.Handle("/vnc/{host:[a-zA-Z0-9_.-]+}", vnc)
 	r.Handle("/vnc/{host:[a-zA-Z0-9_.-]+}/{port:[0-9]+}", vnc)
@@ -144,7 +146,8 @@ func main() {
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		indexTMPL.Execute(w, map[string]interface{}{
+		err := indexTMPL.Execute(w, map[string]interface{}{
+			"hostOptions":     parseHostOptions(*hostOptions),
 			"arbitraryHosts":  *arbitraryHosts,
 			"arbitraryPorts":  *arbitraryPorts,
 			"host":            *host,
@@ -155,6 +158,10 @@ func main() {
 			"defaultViewOnly": *defaultViewOnly,
 			"params":          novncParamsMap,
 		})
+
+		if err != nil {
+			logf(true, "Error: %v.\n", err)
+		}
 	})
 
 	fmt.Printf("Listening on http://%s\n", *addr)
@@ -169,13 +176,17 @@ func main() {
 
 // vncHandler creates a handler for vnc connections. If host and port are set in
 // the url vars, they will be used if allowed.
-func vncHandler(defhost string, defport uint16, verbose, allowHosts, allowPorts bool, cidrList []*net.IPNet, isWhitelist bool) http.Handler {
+func vncHandler(defhost string, defport uint16, verbose, allowHosts, allowPorts bool, hostOptions []hostOption, cidrList []*net.IPNet, isWhitelist bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var host, port string
 
 		if host = mux.Vars(r)["host"]; host == "" {
 			host = defhost
-		} else if !allowHosts {
+		} else if invalidOptionHost(hostOptions, host) {
+			logf(verbose, "connect %s disabled\n", host)
+			http.Error(w, "host is not part of options", http.StatusUnauthorized)
+			return
+		} else if !allowHosts && len(hostOptions) == 0 {
 			logf(verbose, "connect %s disabled\n", host)
 			http.Error(w, "--arbitrary-hosts disabled", http.StatusUnauthorized)
 			return
@@ -183,7 +194,11 @@ func vncHandler(defhost string, defport uint16, verbose, allowHosts, allowPorts 
 
 		if port = mux.Vars(r)["port"]; port == "" {
 			port = fmt.Sprint(defport)
-		} else if !allowPorts {
+		} else if invalidOptionPort(hostOptions, port) {
+			logf(verbose, "connect %s:%s disabled\n", host, port)
+			http.Error(w, "port is not part of options", http.StatusUnauthorized)
+			return
+		} else if !allowPorts && len(hostOptions) == 0 {
 			logf(verbose, "connect %s:%s disabled\n", host, port)
 			http.Error(w, "--arbitrary-ports disabled", http.StatusUnauthorized)
 			return
@@ -406,4 +421,46 @@ func (m *magicCheck) Read(buf []byte) (n int, err error) {
 		}
 	}
 	return n, err
+}
+
+type hostOption struct {
+	Name string
+	Host string
+	Port string
+}
+
+func parseHostOptions(options []string) []hostOption {
+	result := make([]hostOption, 0)
+
+	for _, row := range options {
+		option := strings.SplitN(row, ":", 3)
+
+		result = append(result, hostOption{
+			Name: option[0],
+			Host: option[1],
+			Port: option[2],
+		})
+	}
+
+	return result
+}
+
+func invalidOptionHost(options []hostOption, host string) bool {
+	for _, o := range options {
+		if o.Host == host {
+			return false
+		}
+	}
+
+	return true
+}
+
+func invalidOptionPort(options []hostOption, port string) bool {
+	for _, o := range options {
+		if o.Port == port {
+			return false
+		}
+	}
+
+	return true
 }

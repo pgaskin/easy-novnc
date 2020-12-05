@@ -61,6 +61,18 @@
         <div class="connect">
             <h3 class="ui dividing header">noVNC</h3>
             <form action="/vnc.html" method="GET" class="ui form">
+                {{if ne (len .hostOptions) 0 }}
+                <div class="field">
+                    <label for="host">Host</label>
+                    <select id="hostselect">
+                        {{range $option := .hostOptions}}
+                        <option data-host="{{$option.Host}}" data-port="{{$option.Port}}">{{$option.Name}}</option>
+                        {{end}}
+                    </select>
+                    <input type="hidden" id="host" value="">
+                    <input type="hidden" id="port" value="">
+                </div>
+                {{else}}
                 {{if .arbitraryHosts}}
                 {{if .arbitraryPorts}}
                 <div class="two fields">
@@ -78,6 +90,7 @@
                     <label for="host">Host</label>
                     <input type="text" id="host" placeholder="{{.host}}">
                 </div>
+                {{end}}
                 {{end}}
                 {{end}}
 
@@ -138,6 +151,7 @@
         </div>
     </div>
     <script>
+        var sel = document.getElementById("hostselect");
         var path = document.getElementById("path");
         var host = document.getElementById("host");
         var port = document.getElementById("port");
@@ -151,6 +165,23 @@
                 }
             }
             path.value = addr;
+        }
+
+        function updateHostPath() {
+            host.value = sel.selectedOptions[0].dataset.host;
+            port.value = sel.selectedOptions[0].dataset.port;
+
+            console.log(host.value, port.value)
+
+            updatePath();
+        }
+
+        if (sel) {
+            updateHostPath();
+
+            sel.addEventListener("keyup", updateHostPath);
+            sel.addEventListener("blur", updateHostPath);
+            sel.addEventListener("change", updateHostPath);
         }
 
         if (host) {
