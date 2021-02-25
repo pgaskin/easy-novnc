@@ -244,6 +244,9 @@ func addPrefix(prefix string, h http.Handler) http.Handler {
 		r2.URL = new(url.URL)
 		*r2.URL = *r.URL
 		r2.URL.Path = prefix + r.URL.Path
+		if strings.HasSuffix(r.URL.Path, ".js") {
+			w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		}
 		h.ServeHTTP(w, r2)
 	})
 }
